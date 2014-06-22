@@ -1,0 +1,84 @@
+Predictive Model for Weight-Lifting Motions
+========================================================
+
+```{r,cache=TRUE}
+library(lattice)
+library(ggplot2)
+library(caret)
+library(rpart)
+set.seed(42)
+```
+
+# Data Processing
+
+The data is loaded into R and invalid values are set to NA.
+
+```{r,cache=TRUE}
+trainingRawData = read.csv("pml-training.csv", na.strings = c("NA", "#DIV/0!"))
+testingRawData = read.csv("pml-testing.csv", na.strings = c("NA", "#DIV/0!"))
+```
+
+Several variables are present in the data set for reference, but which are not intended for prediction. Those variables are the index of the sample, the name of the subject, and information about the time series. For this project, new data frames are constructed without those variables.
+
+Also, the testing data set does not have values for most of the variables, so those columns that have no value in the testing data set are removed from the training data set as well.
+
+```{r,cache=TRUE}
+desiredColumns = c("roll_belt", "pitch_belt", "yaw_belt", "total_accel_belt", "gyros_belt_x", "gyros_belt_y", "gyros_belt_z", "accel_belt_x", "accel_belt_y", "accel_belt_z", "magnet_belt_x", "magnet_belt_y", "magnet_belt_z", "roll_arm", "pitch_arm", "yaw_arm", "total_accel_arm", "gyros_arm_x", "gyros_arm_y", "gyros_arm_z", "accel_arm_x", "accel_arm_y", "accel_arm_z", "magnet_arm_x", "magnet_arm_y", "magnet_arm_z", "roll_dumbbell", "pitch_dumbbell", "yaw_dumbbell", "total_accel_dumbbell", "gyros_dumbbell_x", "gyros_dumbbell_y", "gyros_dumbbell_z", "accel_dumbbell_x", "accel_dumbbell_y", "accel_dumbbell_z", "magnet_dumbbell_x", "magnet_dumbbell_y", "magnet_dumbbell_z", "roll_forearm", "pitch_forearm", "yaw_forearm", "total_accel_forearm", "gyros_forearm_x", "gyros_forearm_y", "gyros_forearm_z", "accel_forearm_x", "accel_forearm_y", "accel_forearm_z", "magnet_forearm_x", "magnet_forearm_y", "magnet_forearm_z")
+
+training = subset(trainingRawData, select = c(desiredColumns, "classe"))
+testing = subset(testingRawData, select = c(desiredColumns, "problem_id"))
+```
+
+# Training
+
+A model was built with rpart and cross validation. I would have used a more sophisticated technique such as random forests, except that training was too slow.
+
+The cross-validation accuracy on the training set is shown below and the accuracy on the test set is expected to be similar.
+
+```{r,cache=TRUE}
+fitControl <- trainControl(method = "repeatedcv", number = 10, repeats = 10)
+modFit = train(classe ~ ., data = training, method = "rpart", trControl = fitControl)
+modFit
+```
+
+This is the final tree used for the model:
+
+```{r}
+plot(modFit$finalModel, uniform = T)
+text(modFit$finalModel, use.n = T, cex = 0.8)
+```
+
+# Testing
+
+This table shows the misclassification error on the training data. Misclassification is not shown for the test data because the true values are not included.
+
+```{r}
+pred = predict(modFit, training)
+table(pred, training$classe)
+```
+
+This shows the predicted values of the test data:
+
+```{r}
+predictedTestResponses = predict(modFit, testing)
+predictedTestResponses
+```
+
+
+# Appendices
+
+## Source Data
+
+The WLE data set used for this project was released as part of this paper:
+
+Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013.
+
+More information is avaiale [here](http://groupware.les.inf.puc-rio.br/har#weight_lifting_exercises#ixzz35OWhUXw4)
+
+## Hardware and Software Information
+
+This project was developed and executed using R on Ubuntu. Additional details are shown below.
+
+```{r}
+sessionInfo()
+```
